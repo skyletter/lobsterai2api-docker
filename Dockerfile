@@ -13,7 +13,8 @@ FROM alpine:3.20
 RUN apk add --no-cache ca-certificates tzdata && adduser -D -u 10001 -h /app app
 WORKDIR /app
 COPY --from=build /out/ /app/
-RUN mkdir -p /app/auths /app/data && chown -R 10001:10001 /app
+COPY add-account.sh /app/add-account.sh
+RUN chmod +x /app/add-account.sh && mkdir -p /app/auths /app/data && chown -R 10001:10001 /app
 USER 10001
 EXPOSE 8367
 ENTRYPOINT ["/app/lobsterai2api", "-config", "/app/config.json"]

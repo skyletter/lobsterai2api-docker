@@ -58,9 +58,9 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Set up QEMU（arm64 构建模拟）
+      - name: 将登录辅助脚本放入构建上下文（Dockerfile 需 COPY）
         if: steps.skip.outputs.skip != 'true'
-        uses: docker/setup-qemu-action@v3
+        run: cp mine/add-account.sh upstream/add-account.sh
 
       - name: Set up Docker Buildx
         if: steps.skip.outputs.skip != 'true'
@@ -80,7 +80,7 @@ jobs:
         with:
           context: ./upstream
           file: ./mine/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: |
             ${{ env.IMAGE_SERVER }}:latest
@@ -94,7 +94,7 @@ jobs:
         with:
           context: ./mine/checkin
           file: ./mine/checkin/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: |
             ${{ env.IMAGE_CHECKIN }}:latest

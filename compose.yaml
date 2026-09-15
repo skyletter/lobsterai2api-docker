@@ -5,13 +5,14 @@
 
 services:
   server:
-    # 主服务镜像（amd64 / arm64 双架构，来自 GHCR）
+    # 主服务镜像（amd64 单架构，来自 GHCR）
     image: ghcr.io/skyletter/lobsterai2api-docker/server:latest
     container_name: lobsterai2api
     restart: unless-stopped
     environment:
       - TZ=Asia/Shanghai
       - LB2A_UPSTREAM_BASE=https://lobsterai-server.youdao.com
+      - LB2A_LOGIN_PORTAL=https://lobsterai.youdao.com
     ports:
       # 只暴露到本机，如需局域网访问改为 8367:8367 (注意安全)
       - "127.0.0.1:8367:8367"
