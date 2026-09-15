@@ -1,0 +1,9 @@
+# 本地部署目录（勿提交）
+/auths/
+/data/
+config.json
+*.log
+
+# 通用
+.DS_Store
+*.md~

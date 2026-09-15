@@ -1,0 +1,9 @@
+{
+  "listen": ":8367",
+  "api_key": "CHANGE_ME_custom_api_key",
+  "auth_dir": "/app/auths",
+  "state_file": "/app/data/state.json",
+  "cooldown": {"hard_credit": "12h", "soft_rate": "60s", "err_threshold": 3, "err_cooldown": "10m"},
+  "schedule": {"checkin_hours": [9, 21], "keepalive_hours": [22]},
+  "upstream": {"timeout_seconds": 180}
+}

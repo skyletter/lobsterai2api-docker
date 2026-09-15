@@ -1,0 +1,42 @@
+# docker compose 一键部署 lobsterai2api（NAS）
+# 使用：docker compose up -d
+# 镜像由 GitHub Actions 自动跟随官方项目构建，更新时：
+#   docker compose pull && docker compose up -d
+
+services:
+  server:
+    # 主服务镜像（amd64 / arm64 双架构，来自 GHCR）
+    image: ghcr.io/skyletter/lobsterai2api-docker/server:latest
+    container_name: lobsterai2api
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+      - LB2A_UPSTREAM_BASE=https://lobsterai-server.youdao.com
+    ports:
+      # 只暴露到本机，如需局域网访问改为 8367:8367 (注意安全)
+      - "127.0.0.1:8367:8367"
+    volumes:
+      - ./config.json:/app/config.json:ro
+      - ./auths:/app/auths
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8367/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  checkin:
+    # 每日签到 + 余额查询容器（cron 定时，自定义 CHECKIN_HOURS）
+    image: ghcr.io/skyletter/lobsterai2api-docker/checkin:latest
+    container_name: lobsterai2api-checkin
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+      # 每天 9 点和 21 点签到，多个小时用英文逗号分隔，如 "9,21"
+      - CHECKIN_HOURS=9,21
+    volumes:
+      - ./auths:/app/checkin/auths:ro
+      - ./data:/app/checkin/data
+    depends_on:
+      - server

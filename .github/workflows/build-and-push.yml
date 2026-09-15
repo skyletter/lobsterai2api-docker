@@ -1,0 +1,103 @@
+name: build-and-push
+
+# 跟随官方 xinxinshuhao-create/lobsterai2api 更新：
+# - 每天 UTC 02:00（北京时间 10:00）自动拉取官方最新代码，重建并推送镜像
+# - 也可手动 workflow_dispatch 触发
+# - 每次构建检测上游 commit，未构建过才重建（省 Actions 额度）
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+  # 本仓库改了 Dockerfile / checkin 脚本时也触发重建
+  push:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - 'checkin/**'
+      - '.github/workflows/**'
+
+concurrency:
+  group: build-and-push
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_SERVER: ghcr.io/${{ github.repository }}/server
+  IMAGE_CHECKIN: ghcr.io/${{ github.repository }}/checkin
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出本仓库（含 Dockerfile、checkin 脚本）
+        uses: actions/checkout@v4
+        with:
+          path: mine
+
+      - name: 检出官方上游源码
+        uses: actions/checkout@v4
+        with:
+          repository: xinxinshuhao-create/lobsterai2api
+          path: upstream
+          fetch-depth: 1
+
+      - name: 获取官方最新 commit SHA
+        id: sha
+        run: echo "value=$(git -C upstream rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: 若该 commit 已构建过则跳过（省额度）
+        id: skip
+        continue-on-error: true
+        run: |
+          if docker manifest inspect ${IMAGE_SERVER}:${{ steps.sha.outputs.value }} >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up QEMU（arm64 构建模拟）
+        if: steps.skip.outputs.skip != 'true'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        if: steps.skip.outputs.skip != 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: 登录 GHCR
+        if: steps.skip.outputs.skip != 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 构建并推送主服务镜像
+        if: steps.skip.outputs.skip != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./upstream
+          file: ./mine/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE_SERVER }}:latest
+            ${{ env.IMAGE_SERVER }}:${{ steps.sha.outputs.value }}
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,scope=server,mode=max
+
+      - name: 构建并推送签到镜像
+        if: steps.skip.outputs.skip != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./mine/checkin
+          file: ./mine/checkin/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE_CHECKIN }}:latest
+            ${{ env.IMAGE_CHECKIN }}:${{ steps.sha.outputs.value }}
+          cache-from: type=gha,scope=checkin
+          cache-to: type=gha,scope=checkin,mode=max
