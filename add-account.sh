@@ -13,6 +13,15 @@ LOGFILE=/tmp/lb2api-login-url.log
 STATE=/tmp/lb2api-login-state.json
 
 cd /app
+
+# 启动前自检：容器内 10001 用户必须能写 auths（宿主机挂载目录）
+if ! touch /app/auths/.write-test 2>/dev/null; then
+    echo "✗ /app/auths 在容器内不可写（权限问题）。"
+    echo "  请在宿主机执行: chown -R 10001:10001 <auths 目录> 后再运行本脚本。"
+    exit 1
+fi
+rm -f /app/auths/.write-test
+
 rm -f "$LOGFILE" "$STATE" "$STATE.result"
 
 echo "▶ 启动本地回调服务，请稍候..."

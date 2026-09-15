@@ -60,10 +60,11 @@ mkdir -p lobsterai2api && cd lobsterai2api
 }
 ```
 
-创建数据目录：
+创建数据目录（**必须 chown 给容器用户 10001**，否则 login/签到写不进去）：
 
 ```bash
 mkdir -p auths data
+chown -R 10001:10001 auths data
 ```
 
 ### 2. 下载 compose.yaml 并启动
