@@ -59,15 +59,28 @@ echo "▶ 正在写入回调并兑换 token..."
 wget -q -O /tmp/lb2api-callback-out.html \
     "http://127.0.0.1:${PORT}/auth/callback?code=${CODE}&state=${SVID}" || true
 
-# 等待 login 进程兑换完成（最长 60s）
+# 轮询等待兑换完成（login 超时为 10 分钟，这里只等 40s；不依赖 wait 阻塞）
+i=0
+while [ $i -lt 200 ]; do
+    if [ -f "$STATE.result" ]; then
+        break
+    fi
+    i=$((i+1))
+    sleep 0.2
+done
 wait "$PID" 2>/dev/null
 
-if ls /app/auths/lobsterai-*.json >/dev/null 2>&1; then
+if [ -f "$STATE.result" ]; then
     echo "✓ 登录成功！已保存账号文件："
     ls -la /app/auths/
     echo
     echo "重启主服务加载新账号: docker restart lobsterai2api"
 else
-    echo "✗ 未检测到生成 auth 文件，请检查 /app/auths 目录权限（应属 10001）"
+    echo "✗ 兑换失败或超时。login 日志（含真实错误）如下："
+    cat "$LOGFILE"
+    echo "回调响应：" 
+    cat /tmp/lb2api-callback-out.html 2>/dev/null
+    echo
+    echo "提示：若日志是 http_error/code=..., 通常是签到版本门槛或 code 已用，可重新运行本脚本换新链接再试。"
     exit 1
 fi
