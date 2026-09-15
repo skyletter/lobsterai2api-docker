@@ -59,18 +59,23 @@ echo "▶ 正在写入回调并兑换 token..."
 wget -q -O /tmp/lb2api-callback-out.html \
     "http://127.0.0.1:${PORT}/auth/callback?code=${CODE}&state=${SVID}" || true
 
-# 轮询等待兑换完成（login 超时为 10 分钟，这里只等 40s；不依赖 wait 阻塞）
+# 轮询等待兑换完成（login 失败时会空等 10 分钟，这里只等 60s 就主动停止它）
+ok=0
 i=0
-while [ $i -lt 200 ]; do
+while [ $i -lt 300 ]; do
     if [ -f "$STATE.result" ]; then
+        ok=1
         break
     fi
     i=$((i+1))
     sleep 0.2
 done
+
+# 关键：主动结束 login 进程，避免 wait 被 10 分钟超时阻塞
+kill "$PID" 2>/dev/null
 wait "$PID" 2>/dev/null
 
-if [ -f "$STATE.result" ]; then
+if [ "$ok" = "1" ]; then
     echo "✓ 登录成功！已保存账号文件："
     ls -la /app/auths/
     echo
@@ -78,9 +83,9 @@ if [ -f "$STATE.result" ]; then
 else
     echo "✗ 兑换失败或超时。login 日志（含真实错误）如下："
     cat "$LOGFILE"
-    echo "回调响应：" 
+    echo "回调响应："
     cat /tmp/lb2api-callback-out.html 2>/dev/null
     echo
-    echo "提示：若日志是 http_error/code=..., 通常是签到版本门槛或 code 已用，可重新运行本脚本换新链接再试。"
+    echo "提示：若日志是 http_error/code=..., 通常是 code 已用/过期或签到版本门槛，可重新运行本脚本换新链接再试。"
     exit 1
 fi
