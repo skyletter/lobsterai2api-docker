@@ -37,6 +37,7 @@ services:
       # 每天 9 点和 21 点签到，多个小时用英文逗号分隔，如 "9,21"
       - CHECKIN_HOURS=9,21
     volumes:
+      # 重要：auths 必须与 server 共享同一目录（登录生成的账号文件在 server/auths）
       - ./auths:/app/checkin/auths:ro
       - ./data:/app/checkin/data
     depends_on:
