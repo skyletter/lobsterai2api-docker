@@ -1,0 +1,23 @@
+name: probe-packages
+on:
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+      contents: read
+    steps:
+      - name: 探测 GHCR 包名与版本
+        run: |
+          echo "=== repo packages 列表 ==="
+          gh api "repos/skyletter/lobsterai2api-docker/packages?package_type=container" --jq '.[] | .name' || echo "list repo failed"
+          echo "=== variants ==="
+          for n in "server" "checkin" "lobsterai2api-docker%2Fserver" "skyletter%2Flobsterai2api-docker%2Fserver" "lobsterai2api-docker%2Fcheckin" "skyletter%2Flobsterai2api-docker%2Fcheckin"; do
+            echo "--- $n ---"
+            gh api "repos/skyletter/lobsterai2api-docker/packages/container/$n/versions" \
+              --jq '.[] | "id=\(.id) created=\(.created_at) tags=\([.metadata.container.tags[]?]|join(","))"' 2>&1 | Select-Object -First 6
+            echo "--- user namespace: $n ---"
+            gh api "user/packages/container/$n/versions" \
+              --jq '.[] | "id=\(.id) created=\(.created_at) tags=\([.metadata.container.tags[]?]|join(","))"' 2>&1 | Select-Object -First 6
+          done
