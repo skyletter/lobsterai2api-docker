@@ -104,50 +104,12 @@ jobs:
           cache-from: type=gha,scope=checkin
           cache-to: type=gha,scope=checkin,mode=max
 
-  # 清理 GHCR 旧镜像版本：每个包只保留最近 N 个版本，更旧的删除（降存储/费用）
+  # 清理 GHCR 旧镜像版本：每个包只保留最近 KEEP 个版本，更旧的删除（降存储/费用）
   cleanup:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - name: 检出仓库（含清理脚本）
+        uses: actions/checkout@v4
       - name: 清理旧版本（保留每个包最近 3 个版本）
-        shell: bash
-        run: |
-          set -e
-          export REPO="${{ github.repository }}"
-          export KEEP=3
-          for PKG in "lobsterai2api-docker%2Fserver" "lobsterai2api-docker%2Fcheckin"; do
-            export PKG
-            echo "=========== 包: $PKG ==========="
-            # 按创建时间倒序列出所有版本
-            gh api "/repos/$REPO/packages/container/$PKG/versions?per_page=100" \
-              --jq '.[] | {id: (.id|tostring), tags: [.metadata.container.tags[]?], created: .created_at}' > /tmp/versions.json 2>/dev/null || true
-            COUNT=$(python3 -c "
-import json,re
-try:
-    rows=[l for l in open('/tmp/versions.json').read().splitlines() if l.strip().startswith('{')]
-    data=json.loads('['+','.join(rows)+']')
-except Exception as e:
-    data=[]
-print(len(data))
-")
-            echo "发现 $COUNT 个版本"
-            python3 - <<'PYEOF'
-import json, subprocess, os
-rep = os.environ["REPO"]
-pkg = os.environ["PKG"]
-keep = int(os.environ["KEEP"])
-rows = []
-for line in open('/tmp/versions.json').read().splitlines():
-    line = line.strip()
-    if line.startswith('{'):
-        rows.append(line)
-data = json.loads('[' + ','.join(rows) + ']') if rows else []
-data.sort(key=lambda v: v.get('created') or '', reverse=True)
-for v in data[keep:]:
-    tags = ','.join(v.get('tags') or [])
-    print(f"删除版本 {v['id']} (tags: {tags})")
-    subprocess.run(
-        ["gh", "api", "-X", "DELETE", f"/repos/{rep}/packages/container/{pkg}/versions/{v['id']}"],
-        check=False)
-PYEOF
-          done
+        run: bash .github/scripts/cleanup-ghcr.sh 3
