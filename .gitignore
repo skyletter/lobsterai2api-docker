@@ -7,3 +7,5 @@ config.json
 # 通用
 .DS_Store
 *.md~
+# 本地使用笔记（Obsidian）
+lobsterai2api-docker-使用纪要.md

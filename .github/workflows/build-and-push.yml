@@ -109,7 +109,17 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - name: 检出仓库（含清理脚本）
-        uses: actions/checkout@v4
-      - name: 清理旧版本（保留每个包最近 3 个版本）
-        run: bash .github/scripts/cleanup-ghcr.sh 3
+      - name: 清理主服务镜像旧版本（保留最近 3 个）
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: 'lobsterai2api-docker/server'
+          package-type: 'container'
+          min-versions-to-keep: 3
+          delete-only-untagged-versions: false
+      - name: 清理签到镜像旧版本（保留最近 3 个）
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: 'lobsterai2api-docker/checkin'
+          package-type: 'container'
+          min-versions-to-keep: 3
+          delete-only-untagged-versions: false
