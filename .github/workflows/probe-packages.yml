@@ -14,10 +14,10 @@ jobs:
           gh api "repos/skyletter/lobsterai2api-docker/packages?package_type=container" --jq '.[] | .name' || echo "list repo failed"
           echo "=== variants ==="
           for n in "server" "checkin" "lobsterai2api-docker%2Fserver" "skyletter%2Flobsterai2api-docker%2Fserver" "lobsterai2api-docker%2Fcheckin" "skyletter%2Flobsterai2api-docker%2Fcheckin"; do
-            echo "--- $n ---"
+            echo "--- repo: $n ---"
             gh api "repos/skyletter/lobsterai2api-docker/packages/container/$n/versions" \
-              --jq '.[] | "id=\(.id) created=\(.created_at) tags=\([.metadata.container.tags[]?]|join(","))"' 2>&1 | Select-Object -First 6
-            echo "--- user namespace: $n ---"
+              --jq '.[] | "id=\(.id) created=\(.created_at) tags=\([.metadata.container.tags[]?]|join(","))"' 2>&1 | head -6 || true
+            echo "--- user: $n ---"
             gh api "user/packages/container/$n/versions" \
-              --jq '.[] | "id=\(.id) created=\(.created_at) tags=\([.metadata.container.tags[]?]|join(","))"' 2>&1 | Select-Object -First 6
+              --jq '.[] | "id=\(.id) created=\(.created_at) tags=\([.metadata.container.tags[]?]|join(","))"' 2>&1 | head -6 || true
           done
